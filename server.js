@@ -21,9 +21,9 @@ async function getBrowser() {
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage', // Helps with memory issues in Docker
+            '--disable-dev-shm-usage',
             '--disable-gpu',
-            '--proxy-server=http://WIISSEE:WISE1230@geo.iproyal.com:12321' // IPRoyal Proxy with auth
+            '--proxy-server=geo.iproyal.com:12321'
         ],
         headless: 'new'
     });
@@ -49,6 +49,12 @@ app.get('/scrape', async (req, res) => {
     try {
         const browserInstance = await getBrowser();
         const page = await browserInstance.newPage();
+
+        // Authenticate with proxy BEFORE setting request interception
+        await page.authenticate({
+            username: 'WIISSEE',
+            password: 'WISE1230'
+        });
 
         // Optimize: Block images, fonts, and styles to speed up loading
         await page.setRequestInterception(true);
