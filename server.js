@@ -11,6 +11,8 @@ app.get('/scrape', async (req, res) => {
         return res.status(400).json({ error: 'Missing "url" query parameter' });
     }
 
+    const startTime = Date.now();
+
     try {
         // Launch Puppeteer
         // 'no-sandbox' is required for Docker environments
@@ -45,9 +47,13 @@ app.get('/scrape', async (req, res) => {
 
         await browser.close();
 
+        const endTime = Date.now();
+        const executionTime = endTime - startTime;
+
         res.json({
             url: url,
             content_length: content.length,
+            execution_time_ms: executionTime,
             html: content
         });
 
