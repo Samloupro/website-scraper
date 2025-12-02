@@ -65,6 +65,11 @@ app.get('/scrape', async (req, res) => {
 
         const content = await page.content();
 
+        // Extract text content safely
+        const text = await page.evaluate(() => {
+            return document.body ? document.body.innerText : '';
+        });
+
         // Only close the page, NOT the browser
         await page.close();
 
@@ -75,6 +80,7 @@ app.get('/scrape', async (req, res) => {
             url: url,
             content_length: content.length,
             execution_time_ms: executionTime,
+            text: text,
             html: content
         });
 
