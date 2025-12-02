@@ -1,6 +1,7 @@
 const express = require('express');
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+const useProxy = require('puppeteer-page-proxy');
 
 puppeteer.use(StealthPlugin());
 
@@ -15,16 +16,13 @@ async function getBrowser() {
         return browser;
     }
 
-    // Launch Puppeteer
-    // 'no-sandbox' is required for Docker environments
+    // Launch Puppeteer WITHOUT global proxy
     browser = await puppeteer.launch({
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
-            '--disable-gpu',
-            '--proxy-server=socks5://geo.iproyal.com:12321',
-            '--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE geo.iproyal.com'
+            '--disable-gpu'
         ],
         headless: 'new'
     });
@@ -51,24 +49,13 @@ app.get('/scrape', async (req, res) => {
         const browserInstance = await getBrowser();
         const page = await browserInstance.newPage();
 
-        // Authenticate with SOCKS5 proxy
-        await page.authenticate({
-            username: 'WIISSEE',
-            password: 'WISE1230'
-        });
+        // Apply proxy to this specific page
+        await useProxy(page, 'socks5://WIISSEE:WISE1230@geo.iproyal.com:12321');
 
-        // Optimize: Block images, fonts, and styles to speed up loading
-        await page.setRequestInterception(true);
-        page.on('request', (req) => {
-            if (['image', 'stylesheet', 'font', 'media'].includes(req.resourceType())) {
-                req.abort();
-            } else {
-                req.continue();
-            }
-        });
+        // NOTE: We can't use setRequestInterception with puppeteer-page-proxy
+        // So we remove the image/font blocking for now
 
         // Set a reasonable timeout and wait condition
-        // 'domcontentloaded' is much faster than 'networkidle0'
         await page.goto(url, {
             waitUntil: 'domcontentloaded',
             timeout: 30000
