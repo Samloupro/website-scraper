@@ -4,6 +4,35 @@ const puppeteer = require('puppeteer');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Global browser instance
+let browser = null;
+
+async function getBrowser() {
+    if (browser) {
+        return browser;
+    }
+
+    // Launch Puppeteer
+    // 'no-sandbox' is required for Docker environments
+    browser = await puppeteer.launch({
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage', // Helps with memory issues in Docker
+            '--disable-gpu'
+        ],
+        headless: 'new'
+    });
+
+    // Handle browser disconnect/crash
+    browser.on('disconnected', () => {
+        console.log('Browser disconnected. Clearing instance.');
+        browser = null;
+    });
+
+    return browser;
+}
+
 app.get('/scrape', async (req, res) => {
     const url = req.query.url;
 
@@ -14,17 +43,8 @@ app.get('/scrape', async (req, res) => {
     const startTime = Date.now();
 
     try {
-        // Launch Puppeteer
-        // 'no-sandbox' is required for Docker environments
-        const browser = await puppeteer.launch({
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage' // Helps with memory issues in Docker
-            ]
-        });
-
-        const page = await browser.newPage();
+        const browserInstance = await getBrowser();
+        const page = await browserInstance.newPage();
 
         // Optimize: Block images, fonts, and styles to speed up loading
         await page.setRequestInterception(true);
@@ -45,7 +65,8 @@ app.get('/scrape', async (req, res) => {
 
         const content = await page.content();
 
-        await browser.close();
+        // Only close the page, NOT the browser
+        await page.close();
 
         const endTime = Date.now();
         const executionTime = endTime - startTime;
@@ -59,6 +80,14 @@ app.get('/scrape', async (req, res) => {
 
     } catch (error) {
         console.error('Scraping error:', error);
+        // If there's a critical error, we might want to reset the browser
+        if (error.message.includes('Protocol error') || error.message.includes('Target closed')) {
+            if (browser) {
+                await browser.close().catch(() => { });
+                browser = null;
+            }
+        }
+
         res.status(500).json({
             error: 'Failed to scrape URL',
             details: error.message
