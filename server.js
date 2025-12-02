@@ -23,7 +23,8 @@ async function getBrowser() {
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
             '--disable-gpu',
-            '--proxy-server=socks5://WIISSEE:WISE1230@geo.iproyal.com:12321'
+            '--proxy-server=socks5://geo.iproyal.com:12321',
+            '--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE geo.iproyal.com'
         ],
         headless: 'new'
     });
@@ -49,6 +50,12 @@ app.get('/scrape', async (req, res) => {
     try {
         const browserInstance = await getBrowser();
         const page = await browserInstance.newPage();
+
+        // Authenticate with SOCKS5 proxy
+        await page.authenticate({
+            username: 'WIISSEE',
+            password: 'WISE1230'
+        });
 
         // Optimize: Block images, fonts, and styles to speed up loading
         await page.setRequestInterception(true);
