@@ -24,9 +24,20 @@ app.get('/scrape', async (req, res) => {
 
         const page = await browser.newPage();
 
+        // Optimize: Block images, fonts, and styles to speed up loading
+        await page.setRequestInterception(true);
+        page.on('request', (req) => {
+            if (['image', 'stylesheet', 'font', 'media'].includes(req.resourceType())) {
+                req.abort();
+            } else {
+                req.continue();
+            }
+        });
+
         // Set a reasonable timeout and wait condition
+        // 'domcontentloaded' is much faster than 'networkidle0'
         await page.goto(url, {
-            waitUntil: 'networkidle0',
+            waitUntil: 'domcontentloaded',
             timeout: 30000
         });
 
