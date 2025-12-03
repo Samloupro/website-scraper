@@ -1,9 +1,6 @@
 const express = require('express');
-const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+const puppeteer = require('puppeteer');
 const useProxy = require('puppeteer-page-proxy');
-
-puppeteer.use(StealthPlugin());
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -49,11 +46,8 @@ app.get('/scrape', async (req, res) => {
         const browserInstance = await getBrowser();
         const page = await browserInstance.newPage();
 
-        // Apply proxy to this specific page
+        // Apply SOCKS5 proxy to this page
         await useProxy(page, 'socks5://WIISSEE:WISE1230@geo.iproyal.com:12321');
-
-        // NOTE: We can't use setRequestInterception with puppeteer-page-proxy
-        // So we remove the image/font blocking for now
 
         // Set a reasonable timeout and wait condition
         await page.goto(url, {
